@@ -1,0 +1,46 @@
+{
+  "summary": "Comprehensive backend (pytest, 25 tests) + frontend (Playwright) testing of EvaOne.AI MVP. 24/25 backend tests pass; 1 critical failure: gpt-5.4 model unrecognized by Emergent LLM key proxy (litellm). All other LLM models (Claude Sonnet 4.6, Gemini 3.1 Pro, Gemini 3 Flash) work. All frontend flows verified end-to-end: login render, cookie-based auth, dashboard stats, Eva Chat round-trip (sent message, real LLM reply rendered), model selector visible, Vault note create with success toast, Files upload UI present, Settings shows user identity + multi-model info. Full data-testid coverage on all interactive elements. UI is polished dark-glass cinematic as specified.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "POST /api/chat/sessions/{id}/messages with model=gpt-5.4", "issue": "Emergent LLM key proxy returns 'Invalid model name passed in model=gpt-5.4. Call /v1/models to view available models for your key.' Eva chat with GPT model is BROKEN. Verified via both pytest and direct curl. GET /api/models still advertises gpt-5.4 as available — frontend will surface it as selectable but it will 500 on use.", "priority": "CRITICAL"}
+    ],
+    "minor": [
+      {"endpoint": "Multiple", "issue": "server.py is 870 lines — exceeds the 700-line guideline. Consider splitting into modules (auth.py, chat.py, files.py, vault.py, dashboard.py)."},
+      {"endpoint": "GET /api/dashboard/stats", "issue": "messages count uses an async list comprehension inside count_documents — works but is O(N) sessions. Acceptable for MVP scale."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Model switching to GPT-5.4 in Eva Chat", "issue": "If user picks GPT-5.4 from the model selector, the message send will fail with 500 due to backend issue above. Frontend should either hide gpt-5.4 or surface a clean error.", "affected_selectors": ["[data-testid=\"model-selector\"]"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_evaone_api.py",
+    "/app/backend/tests/conftest.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "FIX gpt-5.4 model id — Emergent LLM key/litellm does not recognize 'gpt-5.4'. Either map it server-side to a supported OpenAI model (e.g., gpt-5, gpt-4o) or remove it from AVAILABLE_MODELS in /app/backend/server.py. Verify the correct OpenAI model name by checking emergentintegrations docs.",
+    "(Optional) Modularize server.py into focused modules (>700 lines)."
+  ],
+  "critical_code_review_comments": [
+    "server.py 870 lines — recommend modular split for maintainability.",
+    "extract_text_from_file does eager imports of PyPDF2/docx/openpyxl inside the function — fine for cold-path but lint will flag; acceptable.",
+    "_full_text stored as embedded field on file doc up to 60KB — reasonable but monitor doc-size for very large uploads.",
+    "AUTH: Both cookie and Authorization Bearer fallback implemented cleanly with timezone-aware expiry; good.",
+    "User isolation properly enforced via {user_id: ...} in every query — verified by test_user_b_cannot_see_user_a_data."
+  ],
+  "updated_files": [
+    "/app/backend/tests/conftest.py (new)",
+    "/app/backend/tests/test_evaone_api.py (new)"
+  ],
+  "success_rate": {"backend": "96% (24/25)", "frontend": "100% (all flows tested rendered & functional)"},
+  "test_credentials": "Seeded in MongoDB. Session token (User A): test_sess_A_1780314609704 / user_id: test-user-A-1780314609704. Session token (User B): test_sess_B_1780314609704 / user_id: test-user-B-1780314609704. 7-day expiry. Backend tests also auto-seed fresh users.",
+  "seed_data_creation": "conftest.py auto-seeds fresh user+session per pytest run via direct pymongo insert. Two persistent users (A & B) also seeded manually for retest convenience.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend pytest suite at /app/backend/tests/test_evaone_api.py covers all 25 critical paths: auth (cookie+bearer), models list, chat CRUD + send with real LLM, vault notes CRUD + search + tag, projects CRUD, onboarding idempotency, dashboard stats+activity, files upload+download+analyze+soft-delete, voice transcribe+speak, user isolation. Run: `cd /app && python -m pytest backend/tests/ -v`. Test users persist in test_database; bearer tokens above can be reused. For Playwright, set httpOnly secure SameSite=None cookie 'session_token' on preview domain before navigation — bypasses Google OAuth.",
+  "rca of the issue": "RCA for gpt-5.4 failure: Backend AVAILABLE_MODELS dict in /app/backend/server.py:42 declares 'gpt-5.4' as an OpenAI provider model. When LlmChat.with_model('openai','gpt-5.4').send_message() is called via emergentintegrations → litellm → Emergent universal key proxy, the proxy responds with HTTP 400 'Invalid model name passed in model=gpt-5.4'. The Emergent universal LLM key likely does not expose a model literally named 'gpt-5.4'; valid OpenAI ids on the proxy are different (e.g., 'gpt-5', 'gpt-4o', etc.). Mitigation: (a) replace 'gpt-5.4' with the actual model id supported by Emergent key (check emergentintegrations release notes); or (b) keep the user-facing label 'GPT-5.4' but map to a working backend model name; or (c) remove the entry until the correct id is confirmed. Reproduction: curl POST /api/chat/sessions {model:'gpt-5.4'} then POST /messages {content:'hi', model:'gpt-5.4'} with seeded bearer token → 500."
+}
