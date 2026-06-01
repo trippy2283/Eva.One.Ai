@@ -1,0 +1,155 @@
+{
+  "project_name": "EvaOne.AI - Executive Operating System",
+  "theme": "dark",
+  "archetype": "Hybrid 5 (Luxury) & 7 (Electric & Neon) - Cinematic Intelligence",
+  "global_rules": [
+    "Never feel like a generic chatbot or template SaaS clone.",
+    "Must feel like a futuristic operating system, an executive command center.",
+    "Use glassmorphism with high-end optical clarity (crystal glass), not muddy gray transparency.",
+    "Every page must have an OS-like left rail navigation.",
+    "Implement intelligent transitions and reactive visual feedback."
+  ],
+  "color_palette": {
+    "background": {
+      "base": "#030304",
+      "surface": "#08080A",
+      "surface_elevated": "#0D0D11",
+      "glass": "rgba(255, 255, 255, 0.02)",
+      "glass_heavy": "rgba(10, 10, 11, 0.7)"
+    },
+    "text": {
+      "primary": "#FFFFFF",
+      "secondary": "#A1A1AA",
+      "muted": "#52525B",
+      "accent_cyan": "#00F0FF"
+    },
+    "accents": {
+      "primary": "#00F0FF",
+      "electric_cyan": "#00F0FF",
+      "neon_blue": "#003CFF",
+      "violet": "#8A2BE2",
+      "obsidian": "#0A0A0B",
+      "graphite": "#1C1C1E"
+    },
+    "borders": {
+      "subtle": "rgba(255, 255, 255, 0.05)",
+      "glass": "rgba(255, 255, 255, 0.1)",
+      "glow_cyan": "rgba(0, 240, 255, 0.2)"
+    },
+    "effects": {
+      "glow_cyan": "0 0 20px rgba(0, 240, 255, 0.15)",
+      "glow_violet": "0 0 20px rgba(138, 43, 226, 0.15)"
+    }
+  },
+  "typography": {
+    "font_families": {
+      "heading": "'Outfit', sans-serif",
+      "body": "'Manrope', sans-serif",
+      "mono": "'JetBrains Mono', monospace"
+    },
+    "rules": [
+      "NO Inter, NO Roboto.",
+      "Headings: Outfit, tracking-tight, uppercase for module titles.",
+      "Body: Manrope, clear and geometric.",
+      "Metrics/Code: JetBrains Mono for a premium AI workstation feel.",
+      "Use bold/light contrast to create hierarchy (e.g., font-light for large numbers, font-bold for small labels)."
+    ],
+    "sizes": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl tracking-tighter",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight",
+      "h3": "text-xl sm:text-2xl",
+      "h4": "text-lg sm:text-xl",
+      "body": "text-base leading-relaxed",
+      "label": "text-xs tracking-[0.2em] uppercase"
+    }
+  },
+  "layout_and_spacing": {
+    "strategy": "The 'Control Room' Grid for dashboards, 'The Tracing Beam' borders for cards.",
+    "navigation": {
+      "type": "Left Rail OS-Navigation",
+      "width": "w-20 md:w-64",
+      "style": "Fixed, border-r border-white/5, backdrop-blur-2xl bg-black/40",
+      "items": ["Command Center", "Eva Chat", "Vault", "Files", "Settings"]
+    },
+    "spacing_scale": "p-4, p-6, p-8, p-12. Generous padding inside glass cards to prevent collision.",
+    "container_radius": "rounded-2xl or rounded-3xl for major panels, rounded-lg for internal elements"
+  },
+  "surface_strategies": {
+    "glassmorphism": {
+      "description": "Optical Clarity Glass for layers.",
+      "classes": "bg-white/[0.02] backdrop-blur-2xl border border-white/[0.05] shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+    },
+    "tracing_beam_cards": {
+      "description": "High-conversion or active state panels with glowing edge.",
+      "classes": "relative overflow-hidden border border-white/5 bg-black/50 hover:border-cyan-500/30 transition-all duration-300"
+    }
+  },
+  "components_strategy": {
+    "buttons": {
+      "primary": "bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20 hover:border-cyan-500/50 hover:shadow-[0_0_15px_rgba(0,240,255,0.3)] transition-all",
+      "secondary": "bg-white/5 text-white border border-white/10 hover:bg-white/10 transition-all"
+    },
+    "inputs": "bg-black/40 border-white/10 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 text-white placeholder:text-zinc-600 rounded-lg",
+    "avatar_component": {
+      "description": "Eva AI Avatar with reactive states.",
+      "states": [
+        "idle: slow subtle pulse, using eva_avatar_idle image.",
+        "listening: receptive inward wave animation, using eva_avatar_listening image.",
+        "thinking: complex fast network pulse, using eva_avatar_thinking image.",
+        "speaking: expanding energetic soundwave ripples, using eva_avatar_speaking image."
+      ],
+      "implementation": "Use Framer Motion to animate opacity and scale between these states, overlaid or framed in a glowing circular or rounded-2xl glass container."
+    }
+  },
+  "image_urls": [
+    {
+      "category": "eva_avatar_idle",
+      "url": "https://static.prod-images.emergentagent.com/jobs/45787ca7-ff54-4dfd-b80d-271cf6f40729/images/d209384f8f582cfd8a09ff3a082bbc2aaf53b1f2c8b0258e5311ea51bf9b7cc7.png",
+      "description": "Softly glowing abstract neural orb. Use for the default idle state of the Eva Avatar."
+    },
+    {
+      "category": "eva_avatar_listening",
+      "url": "https://static.prod-images.emergentagent.com/jobs/45787ca7-ff54-4dfd-b80d-271cf6f40729/images/3967ed1ac36255cda09d646533d250d43bacf0c4cfa7646ff254a1ee55f66dc0.png",
+      "description": "Inward glowing wave orb. Use for the listening state when STT is active."
+    },
+    {
+      "category": "eva_avatar_speaking",
+      "url": "https://static.prod-images.emergentagent.com/jobs/45787ca7-ff54-4dfd-b80d-271cf6f40729/images/f6227e62163982e07de52907f0194a3b8da25de389aa64b2e266d6e2303a21cd.png",
+      "description": "Expanding energetic orb. Use for the speaking state when TTS is active."
+    },
+    {
+      "category": "eva_avatar_thinking",
+      "url": "https://static.prod-images.emergentagent.com/jobs/45787ca7-ff54-4dfd-b80d-271cf6f40729/images/95cf2cb9370384de0b0a289c416dcd84b6f461ec8247eb034a7852ba885283ba.png",
+      "description": "Complex fast network pulse orb. Use for processing/thinking state."
+    },
+    {
+      "category": "login_background",
+      "url": "https://static.prod-images.emergentagent.com/jobs/45787ca7-ff54-4dfd-b80d-271cf6f40729/images/b1c8a9bc524f253fb31cd77143c1ed2f841f8739c4c735e8f9da827bdadd0a57.png",
+      "description": "Abstract dark studio background with subtle neon blue light tracers. Use for Google Auth login screen."
+    },
+    {
+      "category": "dashboard_mesh",
+      "url": "https://static.prod-images.emergentagent.com/jobs/45787ca7-ff54-4dfd-b80d-271cf6f40729/images/6692735944b70e7bdbd07f0baa85544ac93e4d5e886af552b42e2d2ee09be9f1.png",
+      "description": "Abstract neural mesh. Use as a subtle watermark or backdrop overlay for the Executive Command Center."
+    }
+  ],
+  "accessibility_and_testing": {
+    "attributes": [
+      "All interactive elements MUST include data-testid attribute.",
+      "Convention: kebab-case, role-based. E.g., data-testid='command-center-nav-link'"
+    ],
+    "motion": "Use framer-motion for state transitions, but respect prefers-reduced-motion.",
+    "contrast": "Ensure text contrast over deep backgrounds is at least APCA compliant."
+  },
+  "instructions_to_main_agent": [
+    "Install and setup Outfit, Manrope, and JetBrains Mono fonts.",
+    "Implement lucide-react or phosphor-icons for navigation and UI icons.",
+    "Create a root layout with a fixed left-rail navigation (OS-like). The main content area should offset this rail.",
+    "Login Screen: Use `login_background` as full-screen cover with a glassmorphism card centered for Google Auth.",
+    "Eva Chat Core: Implement a streaming message interface that feels like a premium console, using JetBrains Mono for code blocks and timestamps.",
+    "Eva Avatar Component: Create a component that receives a 'state' prop (idle, listening, thinking, speaking) and cross-fades the respective image URLs while adding a subtle CSS pulse or glow ring matching the state (cyan for listening/speaking, violet for thinking).",
+    "Command Center Dashboard: Implement a bento-box 'Control Room' grid utilizing pure glassmorphism containers (`bg-white/[0.02] backdrop-blur-2xl border border-white/[0.05]`). Include strategic priorities, system health, and agent activity widgets.",
+    "Knowledge Vault & File Intelligence: Use sleek upload zones with dashed glass borders and hover states that glow cyan.",
+    "Ensure the entire app resides within a dark theme context strictly using the color variables provided."
+  ]
+}
