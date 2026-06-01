@@ -5,7 +5,7 @@ export function Footer() {
     <footer className="border-t border-white/5 py-10 px-6 bg-[#030304]" data-testid="evaone-footer">
       <div className="max-w-6xl mx-auto grid md:grid-cols-4 gap-8 text-sm">
         <div>
-          <div className="font-bold text-base mb-1 tracking-tight">EvaOne.AI</div>
+          <div className="font-bold text-base mb-1 tracking-tight">EvaOne</div>
           <div className="text-xs text-white/45 leading-relaxed">
             Built by <span className="text-white/70">Mentally Creative Studios</span>.<br/>
             The AI executive operating system.
