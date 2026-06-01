@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { listModels } from "@/lib/api";
-import { Cpu, ShieldCheck, Volume2, KeyRound, Sparkles } from "lucide-react";
+import { Cpu, ShieldCheck, Volume2, KeyRound, Sparkles, Check, X as XIcon } from "lucide-react";
 import { EvaAvatar } from "@/components/EvaAvatar";
 
 export function Settings() {
@@ -71,6 +71,54 @@ export function Settings() {
               EvaOne uses the Emergent Universal LLM Key for Claude, GPT, Gemini, Whisper, and TTS — all routed through a single secure credential.
             </p>
             <div className="mt-2 text-xs text-cyan-300 font-mono">EMERGENT_LLM_KEY · ACTIVE</div>
+          </Card>
+
+          {/* Capabilities — transparency */}
+          <Card title="What Eva can & can't do" eyebrow="TRANSPARENCY" icon={ShieldCheck}>
+            <p className="text-xs text-white/50 mb-4">
+              Eva is direct about her limits. No claimed actions, no fake integrations.
+            </p>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div data-testid="capabilities-can">
+                <div className="label-eyebrow text-cyan-300 mb-2">CAN DO TODAY</div>
+                <ul className="space-y-1.5">
+                  {[
+                    "Chat, reason, plan, summarize",
+                    "Analyze uploaded files (PDF, DOCX, XLSX, CSV, TXT, images, audio)",
+                    "Read & write to your Knowledge Vault",
+                    "Voice input (Whisper) & voice replies (OpenAI TTS)",
+                    "Surface dashboards, projects, action items",
+                    "Switch between Claude, GPT-5, Gemini per session",
+                  ].map((c, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-white/80">
+                      <Check size={13} className="text-cyan-300 shrink-0 mt-0.5" />
+                      <span>{c}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div data-testid="capabilities-cannot">
+                <div className="label-eyebrow text-white/50 mb-2">CAN'T DO (YET)</div>
+                <ul className="space-y-1.5">
+                  {[
+                    "No access to her own configuration, subscription, or backend systems",
+                    "No live internet — no real-time pricing, browsing, or external lookups",
+                    "No outbound actions — won't send emails, post to Slack, charge payments, or deploy code",
+                    "No third-party tool writes (Gmail, Calendar, Notion, HubSpot, Linear) — Phase 2",
+                    "No cross-session memory unless you pin it to the Vault",
+                    "No knowledge past model training cutoff unless you provide it",
+                  ].map((c, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-white/55">
+                      <XIcon size={13} className="text-white/40 shrink-0 mt-0.5" />
+                      <span>{c}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <div className="mt-4 text-[10px] font-mono text-white/40 tracking-widest uppercase border-t border-white/5 pt-3">
+              Approval-first execution — Eva drafts, you decide.
+            </div>
           </Card>
         </div>
 

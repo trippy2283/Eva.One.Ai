@@ -512,6 +512,9 @@ function Welcome({ onPrompt }) {
           </button>
         ))}
       </div>
+      <div className="mt-8 max-w-xl mx-auto text-[10px] font-mono tracking-widest text-white/40 uppercase border-t border-white/5 pt-4">
+        Eva limits: no live internet · no outbound emails/messages · no third-party writes yet · no cross-session memory unless saved to Vault
+      </div>
     </div>
   );
 }
