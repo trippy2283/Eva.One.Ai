@@ -39,7 +39,7 @@ AUTH_SESSION_URL = "https://demobackend.emergentagent.com/auth/v1/env/oauth/sess
 # Available models
 AVAILABLE_MODELS = {
     "claude-sonnet-4-6": {"provider": "anthropic", "label": "Claude Sonnet 4.6"},
-    "gpt-5.4": {"provider": "openai", "label": "GPT-5.4"},
+    "gpt-5": {"provider": "openai", "label": "GPT-5"},
     "gemini-3.1-pro-preview": {"provider": "gemini", "label": "Gemini 3.1 Pro"},
     "gemini-3-flash-preview": {"provider": "gemini", "label": "Gemini 3 Flash"},
 }
