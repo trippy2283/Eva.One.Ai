@@ -14,6 +14,9 @@ import {
   Target,
   ArrowRight,
   Plus,
+  Crown as CrownIcon,
+  Brain as BrainIcon,
+  CheckSquare as CheckSquareIcon,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -104,6 +107,13 @@ export function CommandCenter() {
                 <MessagesSquare size={16} /> Start session with Eva
               </button>
               <button
+                onClick={() => navigate("/boardroom")}
+                className="btn-ghost px-5 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2"
+                data-testid="quick-open-boardroom"
+              >
+                <CrownIcon size={16} /> Convene the board
+              </button>
+              <button
                 onClick={() => navigate("/files")}
                 className="btn-ghost px-5 py-2.5 rounded-xl text-sm font-medium flex items-center gap-2"
                 data-testid="quick-open-files"
@@ -125,11 +135,16 @@ export function CommandCenter() {
         </section>
 
         {/* Stats grid */}
-        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" data-testid="stats-grid">
+        <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4" data-testid="stats-grid">
           <StatCard icon={MessagesSquare} label="Conversations" value={stats?.sessions ?? "—"} accent="cyan" />
           <StatCard icon={FileText} label="Files" value={stats?.files ?? "—"} sub={`${stats?.analyzed_files ?? 0} analyzed`} accent="cyan" />
           <StatCard icon={Archive} label="Vault notes" value={stats?.notes ?? "—"} accent="violet" />
           <StatCard icon={Target} label="Active projects" value={stats?.projects_active ?? "—"} sub={`${stats?.projects_total ?? 0} total`} accent="violet" />
+        </section>
+        <section className="grid grid-cols-3 gap-4 mb-8" data-testid="stats-grid-2">
+          <StatCard icon={CrownIcon} label="Board meetings" value={stats?.boardroom_sessions ?? "—"} accent="cyan" />
+          <StatCard icon={BrainIcon} label="Memories" value={stats?.memories ?? "—"} accent="violet" />
+          <StatCard icon={CheckSquareIcon} label="Pending approvals" value={stats?.pending_approvals ?? "—"} accent="cyan" sub={stats?.pending_approvals > 0 ? "Action required" : "All clear"} />
         </section>
 
         <div className="grid lg:grid-cols-[1fr_360px] gap-6">

@@ -400,7 +400,7 @@ export function EvaChat() {
                   }
                 }}
                 rows={1}
-                placeholder="Brief Eva. Strategize. Decide."
+                placeholder="Brief EvaOne. Strategize. Decide."
                 data-testid="chat-input"
                 className="flex-1 bg-transparent text-sm resize-none outline-none placeholder:text-white/30 py-2.5 px-2 max-h-40"
                 style={{ minHeight: "40px" }}

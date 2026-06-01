@@ -83,6 +83,52 @@ export const updateProject = (id, body) =>
 export const deleteProject = (id) =>
   api.delete(`/projects/${id}`).then((r) => r.data);
 
+// Memory
+export const listMemories = (category) =>
+  api.get("/memory", { params: { category } }).then((r) => r.data);
+export const createMemory = (body) =>
+  api.post("/memory", body).then((r) => r.data);
+export const updateMemory = (id, body) =>
+  api.put(`/memory/${id}`, body).then((r) => r.data);
+export const deleteMemory = (id) =>
+  api.delete(`/memory/${id}`).then((r) => r.data);
+
+// Boardroom
+export const listBoardroomSessions = () =>
+  api.get("/boardroom/sessions").then((r) => r.data);
+export const createBoardroomSession = (body) =>
+  api.post("/boardroom/sessions", body).then((r) => r.data);
+export const runBoardroom = (id) =>
+  api.post(`/boardroom/sessions/${id}/run`, {}, { timeout: 120000 }).then((r) => r.data);
+export const getBoardroomSession = (id) =>
+  api.get(`/boardroom/sessions/${id}`).then((r) => r.data);
+export const deleteBoardroomSession = (id) =>
+  api.delete(`/boardroom/sessions/${id}`).then((r) => r.data);
+export const getPersonas = () => api.get("/boardroom/personas").then((r) => r.data);
+
+// Approvals
+export const listApprovals = (status) =>
+  api.get("/approvals", { params: { status } }).then((r) => r.data);
+export const approveAction = (id) =>
+  api.post(`/approvals/${id}/approve`).then((r) => r.data);
+export const rejectAction = (id) =>
+  api.post(`/approvals/${id}/reject`).then((r) => r.data);
+export const deleteApproval = (id) =>
+  api.delete(`/approvals/${id}`).then((r) => r.data);
+
+// Integration drafts (mocked execution)
+export const gmailDraft = (body) =>
+  api.post("/integrations/gmail/draft", body).then((r) => r.data);
+export const slackDraft = (body) =>
+  api.post("/integrations/slack/draft", body).then((r) => r.data);
+export const notionDraft = (body) =>
+  api.post("/integrations/notion/draft", body).then((r) => r.data);
+export const hubspotDraft = (body) =>
+  api.post("/integrations/hubspot/draft", body).then((r) => r.data);
+export const integrationsStatus = () =>
+  api.get("/integrations/status").then((r) => r.data);
+
+
 // Dashboard
 export const dashboardStats = () =>
   api.get("/dashboard/stats").then((r) => r.data);

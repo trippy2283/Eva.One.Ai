@@ -41,7 +41,7 @@ class TestModels:
         assert r.status_code == 200
         models = r.json()
         ids = {m["id"] for m in models}
-        expected = {"claude-sonnet-4-6", "gpt-5.4", "gemini-3.1-pro-preview", "gemini-3-flash-preview"}
+        expected = {"claude-sonnet-4-6", "gpt-5", "gemini-3.1-pro-preview", "gemini-3-flash-preview"}
         assert expected.issubset(ids), f"Missing models. Got: {ids}"
         for m in models:
             assert "label" in m and "provider" in m
@@ -93,17 +93,22 @@ class TestChat:
         assert msgs[0]["role"] == "user"
         assert msgs[1]["role"] == "assistant"
 
-    def test_send_message_gpt_switch(self, base_url, client_a):
-        s = client_a.post(f"{base_url}/api/chat/sessions", json={"model": "gpt-5.4"})
-        sid = s.json()["id"]
-        r = client_a.post(
+    def test_send_message_gpt_switch(self, base_url):
+        # gpt-5 is gated under multi_model feature; use persistent owner (studio plan)
+        s = requests.Session()
+        s.headers.update({"Authorization": "Bearer evatest_token_1780314396324",
+                          "Content-Type": "application/json"})
+        cs = s.post(f"{base_url}/api/chat/sessions", json={"model": "gpt-5"})
+        assert cs.status_code == 200, cs.text
+        sid = cs.json()["id"]
+        r = s.post(
             f"{base_url}/api/chat/sessions/{sid}/messages",
-            json={"content": "Say hi in one word.", "model": "gpt-5.4"},
+            json={"content": "Say hi in one word.", "model": "gpt-5"},
             timeout=120,
         )
         assert r.status_code == 200, r.text
         d = r.json()
-        assert d["assistant_message"]["model"] == "gpt-5.4"
+        assert d["assistant_message"]["model"] == "gpt-5"
         assert len(d["assistant_message"]["content"]) > 0
 
     def test_delete_session(self, base_url, client_a):
