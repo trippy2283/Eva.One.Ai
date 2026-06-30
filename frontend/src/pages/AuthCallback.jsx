@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { exchangeSession, onboard } from "@/lib/api";
+import { exchangeSession, onboard, api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { EvaAvatar } from "@/components/EvaAvatar";
 
@@ -9,6 +9,7 @@ export function AuthCallback() {
   const { setUser } = useAuth();
   const hasProcessed = useRef(false);
   const [error, setError] = useState(null);
+  const [stage, setStage] = useState("Establishing secure session");
 
   useEffect(() => {
     if (hasProcessed.current) return;
@@ -24,33 +25,46 @@ export function AuthCallback() {
 
     (async () => {
       try {
+        setStage("Verifying with Google");
         const data = await exchangeSession(sessionId);
+        // Store session_token in localStorage as a fallback in case the
+        // cross-site cookie was blocked by the browser.
+        if (data?.session_token) {
+          try { localStorage.setItem("evaone_session_token", data.session_token); } catch {}
+          api.defaults.headers.common["Authorization"] = `Bearer ${data.session_token}`;
+        }
         setUser(data.user);
-        // First-run starter content
+        setStage("Initializing workspace");
         try { await onboard(); } catch {}
-        // Clean hash and navigate
         window.history.replaceState({}, document.title, "/");
-        navigate("/", { replace: true, state: { user: data.user } });
+        navigate("/", { replace: true });
       } catch (e) {
-        console.error(e);
-        setError("Authentication failed. Please try again.");
+        console.error("Auth callback error", e);
+        const detail = e?.response?.data?.detail || e?.message || "Authentication failed.";
+        setError(detail);
       }
     })();
   }, [navigate, setUser]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-[#030304]" data-testid="auth-callback">
-      <EvaAvatar state="thinking" size={120} />
-      <div className="label-eyebrow">{error ? "ERROR" : "ESTABLISHING SECURE SESSION"}</div>
+    <div className="min-h-screen flex flex-col items-center justify-center gap-6 bg-[#030304] px-6" data-testid="auth-callback">
+      <EvaAvatar state={error ? "idle" : "thinking"} size={120} />
+      <div className="label-eyebrow">{error ? "AUTH ERROR" : stage}</div>
+      {!error && (
+        <div className="text-xs font-mono text-white/40 tracking-widest uppercase">One moment…</div>
+      )}
       {error && (
         <div className="text-sm text-red-300 max-w-md text-center">
           {error}
-          <button
-            onClick={() => (window.location.href = "/login")}
-            className="ml-2 underline text-cyan-300"
-          >
-            Back to login
-          </button>
+          <div className="mt-4">
+            <button
+              onClick={() => (window.location.href = "/")}
+              className="btn-ghost rounded-lg px-4 py-2 text-xs"
+              data-testid="auth-error-back"
+            >
+              Back to home
+            </button>
+          </div>
         </div>
       )}
     </div>

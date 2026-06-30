@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowRight, Sparkles, Crown, Brain, Archive, FileText, MessagesSquare, CheckCircle2, Zap } from "lucide-react";
 import { EvaAvatar } from "@/components/EvaAvatar";
 import { Footer } from "@/components/Footer";
+import { LandingChatPreview } from "@/components/LandingChatPreview";
 import { api } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
@@ -75,7 +76,7 @@ export function Landing() {
           backgroundPosition: "center",
         }}
       >
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-[1fr_auto] gap-12 items-center">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
           <div>
             <motion.div
               initial={{ opacity: 0, y: 12 }}
@@ -131,9 +132,9 @@ export function Landing() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.4 }}
-            className="hidden lg:block"
+            className="w-full max-w-md mx-auto lg:max-w-none"
           >
-            <EvaAvatar state="idle" size={260} showLabel />
+            <LandingChatPreview />
           </motion.div>
         </div>
       </section>

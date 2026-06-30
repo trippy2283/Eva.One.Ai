@@ -1,11 +1,19 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { fetchMe, logout as apiLogout } from "@/lib/api";
+import { fetchMe, logout as apiLogout, api } from "@/lib/api";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Bootstrap bearer token from localStorage (fallback for blocked cross-site cookies)
+  useEffect(() => {
+    try {
+      const t = localStorage.getItem("evaone_session_token");
+      if (t) api.defaults.headers.common["Authorization"] = `Bearer ${t}`;
+    } catch {}
+  }, []);
 
   const checkAuth = useCallback(async () => {
     try {
@@ -19,8 +27,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    // CRITICAL: If returning from OAuth callback, skip the /me check.
-    // AuthCallback will exchange the session_id first.
+    // If returning from OAuth callback, AuthCallback page handles auth itself
     if (window.location.hash?.includes("session_id=")) {
       setLoading(false);
       return;
@@ -29,11 +36,11 @@ export function AuthProvider({ children }) {
   }, [checkAuth]);
 
   const logout = async () => {
-    try {
-      await apiLogout();
-    } catch {}
+    try { await apiLogout(); } catch {}
+    try { localStorage.removeItem("evaone_session_token"); } catch {}
+    delete api.defaults.headers.common["Authorization"];
     setUser(null);
-    window.location.href = "/login";
+    window.location.href = "/";
   };
 
   return (
