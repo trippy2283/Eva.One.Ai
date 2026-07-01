@@ -25,6 +25,89 @@ load_dotenv(ROOT_DIR / '.env')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("evaone")
 
+# ====================================================================
+# RATE LIMITING (in-memory sliding window per user_id)
+# Free/guest: 30 req/min. Paid: 300 req/min. Bypassed for owner/exec.
+# ====================================================================
+import time as _time
+from collections import deque, defaultdict
+_rate_windows: dict = defaultdict(deque)
+_RATE_LIMITS = {
+    "guest":   {"window": 60, "max": 15},
+    "free":    {"window": 60, "max": 30},
+    "creator": {"window": 60, "max": 120},
+    "founder": {"window": 60, "max": 240},
+    "executive": {"window": 60, "max": 480},
+    "studio":  {"window": 60, "max": 900},
+}
+def _rate_key(user) -> tuple:
+    if user.is_guest:
+        return ("guest",)
+    return (user.plan or "free",)
+
+def check_rate_limit(user) -> None:
+    if user.role in ("owner", "executive"):
+        return
+    key = ("guest" if user.is_guest else (user.plan or "free"))
+    cfg = _RATE_LIMITS.get(key) or _RATE_LIMITS["free"]
+    now = _time.time()
+    window = _rate_windows[(user.user_id, key)]
+    # Drop old
+    while window and window[0] < now - cfg["window"]:
+        window.popleft()
+    if len(window) >= cfg["max"]:
+        from fastapi import HTTPException as _HTTP
+        raise _HTTP(status_code=429, detail=f"Rate limit hit — max {cfg['max']} requests / {cfg['window']}s. Slow down.")
+    window.append(now)
+
+
+# ====================================================================
+# AUDIT LOGGING — write structured events for self-healing observability
+# ====================================================================
+async def audit_log(event: str, meta: dict | None = None, level: str = "info", user_id: str | None = None):
+    try:
+        # Note: db and datetime imported below in main body — this call is deferred until they exist.
+        from datetime import datetime as _dt, timezone as _tz
+        doc = {
+            "id": f"audit_{uuid.uuid4().hex[:12]}",
+            "event": event,
+            "level": level,
+            "user_id": user_id,
+            "meta": meta or {},
+            "at": _dt.now(_tz.utc).isoformat(),
+        }
+        # db is created later; use lazy import via globals()
+        _db = globals().get("db")
+        if _db is not None:
+            await _db.system_audit.insert_one(doc)
+    except Exception as e:
+        logger.warning(f"audit_log failed: {e}")
+
+# Import uuid so audit_log works at import-time (moved up)
+
+
+# ====================================================================
+# LLM RETRY WRAPPER — exponential backoff for transient errors
+# ====================================================================
+async def llm_send_with_retry(chat, user_message, *, max_retries: int = 2, base_delay: float = 0.6):
+    import asyncio as _asyncio
+    last_err = None
+    for attempt in range(max_retries + 1):
+        try:
+            return await chat.send_message(user_message)
+        except Exception as e:
+            last_err = e
+            msg = str(e).lower()
+            transient = any(t in msg for t in ["rate", "timeout", "connection", "temporar", "overload", "503", "504", "502", "unavailable"])
+            if not transient or attempt == max_retries:
+                await audit_log("llm_call_failed", {"attempt": attempt + 1, "error": str(e)[:400]}, level="error")
+                raise
+            await audit_log("llm_call_retry", {"attempt": attempt + 1, "error": str(e)[:200]}, level="warn")
+            await _asyncio.sleep(base_delay * (2 ** attempt))
+    raise last_err  # unreachable
+
+
+
 # ---------- MongoDB ----------
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
@@ -288,25 +371,30 @@ async def create_session(payload: SessionRequest, response: Response):
 
     email = data["email"]
     existing = await db.users.find_one({"email": email}, {"_id": 0})
+
+    # Check if a real (non-guest) owner exists anywhere in the system
+    real_owner_count = await db.users.count_documents({
+        "role": "owner", "is_guest": {"$ne": True}
+    })
+
     if existing:
         user_id = existing["user_id"]
-        await db.users.update_one(
-            {"user_id": user_id},
-            {"$set": {"name": data["name"], "picture": data.get("picture")}}
-        )
-    else:
-        # Role assignment:
-        # 1. OWNER_EMAIL env var match → owner
-        # 2. First non-guest user ever → owner
-        # 3. Pending invite for this email → role from invite
-        # 4. Otherwise → member
+        updates = {"name": data["name"], "picture": data.get("picture")}
+        # Auto-promote to owner if no real owner exists yet (idempotent claim)
         owner_email = (os.environ.get("OWNER_EMAIL") or "").strip().lower()
-        existing_owners = await db.users.count_documents({"role": "owner"})
-        non_guest_count = await db.users.count_documents({"is_guest": {"$ne": True}})
+        if existing.get("role") != "owner":
+            if owner_email and email.lower() == owner_email:
+                updates["role"] = "owner"
+            elif real_owner_count == 0 and not existing.get("is_guest"):
+                updates["role"] = "owner"
+        await db.users.update_one({"user_id": user_id}, {"$set": updates})
+    else:
+        # New user: role assignment priority: OWNER_EMAIL → no-owner-yet → invite → member
+        owner_email = (os.environ.get("OWNER_EMAIL") or "").strip().lower()
         assigned_role = "member"
         if owner_email and email.lower() == owner_email:
             assigned_role = "owner"
-        elif existing_owners == 0 and non_guest_count == 0:
+        elif real_owner_count == 0:
             assigned_role = "owner"
         else:
             invite = await db.invites.find_one({
@@ -368,6 +456,32 @@ async def auth_logout(request: Request, response: Response):
     response.delete_cookie("session_token", path="/")
     return {"ok": True}
 
+
+@api_router.post("/auth/claim-owner")
+async def claim_owner(user: User = Depends(get_current_user)):
+    """Self-service ownership claim. Only works when no real owner exists yet.
+    Idempotent — if user is already owner or another real owner exists, no-op with clear response."""
+    if user.is_guest:
+        raise HTTPException(status_code=403, detail="Sign in with Google first")
+    if user.role == "owner":
+        return {"ok": True, "already_owner": True, "user": user.model_dump()}
+    real_owner_count = await db.users.count_documents({
+        "role": "owner", "is_guest": {"$ne": True}
+    })
+    if real_owner_count > 0:
+        raise HTTPException(status_code=409, detail="An owner already exists for this workspace.")
+    await db.users.update_one({"user_id": user.user_id}, {"$set": {"role": "owner"}})
+    await audit_log("owner_claimed", {"user_id": user.user_id, "email": user.email})
+    updated = await db.users.find_one({"user_id": user.user_id}, {"_id": 0})
+    return {"ok": True, "already_owner": False, "user": updated}
+
+@api_router.get("/auth/owner-status")
+async def owner_status():
+    """Public endpoint — reports whether an owner has been claimed yet."""
+    count = await db.users.count_documents({"role": "owner", "is_guest": {"$ne": True}})
+    return {"owner_claimed": count > 0}
+
+
 # ---------- Models endpoint ----------
 @api_router.get("/models")
 async def list_models():
@@ -428,6 +542,7 @@ async def send_message(session_id: str, body: SendMessageBody, user: User = Depe
 
     # Quota check for chats
     await check_quota(user, "chat")
+    check_rate_limit(user)
     model_id = body.model or sess.get("model") or DEFAULT_MODEL
     if model_id not in AVAILABLE_MODELS:
         raise HTTPException(status_code=400, detail="Unknown model")
@@ -479,10 +594,11 @@ async def send_message(session_id: str, body: SendMessageBody, user: User = Depe
     # Replay history through chat — emergentintegrations LlmChat handles history per session_id internally
     # but to be safe we send only the latest message; library + session_id retains context
     try:
-        assistant_text = await chat.send_message(UserMessage(text=body.content))
+        assistant_text = await llm_send_with_retry(chat, UserMessage(text=body.content))
     except Exception as e:
         logger.exception("LLM call failed")
-        raise HTTPException(status_code=500, detail=f"LLM call failed: {e}")
+        await audit_log("chat_send_failed", {"session_id": session_id, "error": str(e)[:400]}, level="error", user_id=user.user_id)
+        raise HTTPException(status_code=503, detail="Eva is temporarily unavailable. Please try again in a moment.")
 
     now2 = datetime.now(timezone.utc).isoformat()
     assistant_msg = {
@@ -689,10 +805,11 @@ async def analyze_file(file_id: str, body: AnalyzeBody, user: User = Depends(get
 
     prompt = f"FILENAME: {rec['filename']}\n\nDOCUMENT:\n{text[:50000]}"
     try:
-        raw = await chat.send_message(UserMessage(text=prompt))
+        raw = await llm_send_with_retry(chat, UserMessage(text=prompt))
     except Exception as e:
         await db.files.update_one({"id": file_id}, {"$set": {"status": "failed"}})
-        raise HTTPException(status_code=500, detail=f"Analysis failed: {e}")
+        await audit_log("file_analysis_failed", {"file_id": file_id, "error": str(e)[:400]}, level="error", user_id=user.user_id)
+        raise HTTPException(status_code=503, detail="Eva analyzer is temporarily unavailable. Please try again.")
 
     import json
     import re
@@ -1206,10 +1323,11 @@ async def run_boardroom(sid: str, user: User = Depends(get_current_user)):
         user_payload += f"\n\nCONTEXT:\n{doc['context']}"
 
     try:
-        raw = await chat.send_message(UserMessage(text=user_payload))
+        raw = await llm_send_with_retry(chat, UserMessage(text=user_payload))
     except Exception as e:
         await db.boardroom_sessions.update_one({"id": sid}, {"$set": {"status": "failed"}})
-        raise HTTPException(status_code=500, detail=f"Boardroom failed: {e}")
+        await audit_log("boardroom_failed", {"sid": sid, "error": str(e)[:400]}, level="error", user_id=user.user_id)
+        raise HTTPException(status_code=503, detail="The board room is temporarily unavailable. Please try again.")
 
     import json
     import re
@@ -1797,32 +1915,36 @@ async def build_env_context(user: User) -> str:
 
 @api_router.get("/health/diagnostics")
 async def health_diagnostics():
-    """Read-only health snapshot of all subsystems."""
+    """Read-only health snapshot of all subsystems + recent errors."""
     checks = []
-    # MongoDB
     try:
         await db.command("ping")
-        checks.append({"name": "MongoDB", "status": "operational", "latency_ms": None})
+        checks.append({"name": "MongoDB", "status": "operational"})
     except Exception as e:
         checks.append({"name": "MongoDB", "status": "degraded", "error": str(e)[:120]})
-    # Storage
-    checks.append({
-        "name": "Object Storage",
-        "status": "operational" if storage_key else "degraded",
-    })
-    # LLM (lightweight readiness check)
+    checks.append({"name": "Object Storage", "status": "operational" if storage_key else "degraded"})
     checks.append({"name": "LLM Router", "status": "operational" if EMERGENT_LLM_KEY else "degraded"})
-    # Voice
     checks.append({"name": "Voice Engine", "status": "operational" if EMERGENT_LLM_KEY else "degraded"})
-    # Stripe
     checks.append({"name": "Billing (Stripe)", "status": "operational" if os.environ.get("STRIPE_API_KEY") else "degraded"})
-    # Aggregated
-    all_ok = all(c["status"] == "operational" for c in checks)
+
+    # Recent errors from audit log (last 24h)
+    since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    error_count = await db.system_audit.count_documents({"level": "error", "at": {"$gte": since}})
+    warn_count = await db.system_audit.count_documents({"level": "warn", "at": {"$gte": since}})
+    recent = await db.system_audit.find(
+        {"level": {"$in": ["error", "warn"]}, "at": {"$gte": since}},
+        {"_id": 0}
+    ).sort("at", -1).limit(10).to_list(10)
+
+    all_ok = all(c["status"] == "operational" for c in checks) and error_count == 0
     return {
-        "overall": "operational" if all_ok else "degraded",
+        "overall": "operational" if all_ok else ("degraded" if error_count > 3 else "operational"),
         "checks": checks,
-        "audit_log_url": "/api/health/audit",
+        "recent_errors_24h": error_count,
+        "recent_warnings_24h": warn_count,
+        "recent_events": recent,
         "self_healing_mode": "monitor_only",
+        "features": ["auto_retry_llm", "audit_logging", "rate_limiting", "graceful_degradation"],
         "checked_at": datetime.now(timezone.utc).isoformat(),
     }
 

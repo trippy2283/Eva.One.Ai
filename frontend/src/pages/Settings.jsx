@@ -1,16 +1,36 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { listModels } from "@/lib/api";
-import { Cpu, ShieldCheck, Volume2, KeyRound, Sparkles, Check, X as XIcon } from "lucide-react";
+import { listModels, api } from "@/lib/api";
+import { Cpu, ShieldCheck, Volume2, KeyRound, Sparkles, Check, X as XIcon, Crown } from "lucide-react";
 import { EvaAvatar } from "@/components/EvaAvatar";
+import { toast } from "sonner";
 
 export function Settings() {
-  const { user, logout } = useAuth();
+  const { user, logout, refresh } = useAuth();
   const [models, setModels] = useState([]);
+  const [ownerStatus, setOwnerStatus] = useState(null);
+  const [claiming, setClaiming] = useState(false);
 
   useEffect(() => {
     listModels().then(setModels).catch(() => {});
+    api.get("/auth/owner-status").then((r) => setOwnerStatus(r.data)).catch(() => {});
   }, []);
+
+  const handleClaim = async () => {
+    setClaiming(true);
+    try {
+      const res = await api.post("/auth/claim-owner");
+      toast.success(res.data.already_owner ? "You're already the owner." : "Ownership claimed. You're now the workspace Owner.");
+      if (refresh) await refresh();
+      setOwnerStatus({ owner_claimed: true });
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Claim failed");
+    } finally {
+      setClaiming(false);
+    }
+  };
+
+  const showClaimCard = user && !user.is_guest && user.role !== "owner" && ownerStatus && !ownerStatus.owner_claimed;
 
   return (
     <div className="p-6 md:p-10 max-w-[1100px] mx-auto" data-testid="settings-page">
@@ -18,6 +38,31 @@ export function Settings() {
         <div className="label-eyebrow">SYSTEM PREFERENCES</div>
         <h1 className="text-3xl md:text-4xl font-light tracking-tight">Settings</h1>
       </header>
+
+      {showClaimCard && (
+        <div className="eva-glass rounded-2xl p-6 mb-6 eva-glow-cyan border-cyan-500/30" data-testid="claim-owner-card">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/40 flex items-center justify-center shrink-0">
+              <Crown size={20} className="text-cyan-300" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="label-eyebrow text-cyan-300">WORKSPACE UNCLAIMED</div>
+              <h3 className="mt-1 text-lg font-semibold tracking-tight">Claim ownership of this EvaOne workspace</h3>
+              <p className="mt-1 text-sm text-white/60">
+                No owner has been assigned yet. As the founder, claim ownership to unlock team management, plan control, and admin access.
+              </p>
+            </div>
+            <button
+              onClick={handleClaim}
+              disabled={claiming}
+              data-testid="claim-owner-btn"
+              className="btn-cyan rounded-xl px-4 py-2.5 text-sm font-medium shrink-0 disabled:opacity-50"
+            >
+              {claiming ? "Claiming…" : "Claim as Owner"}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-6">
         <div className="space-y-6">

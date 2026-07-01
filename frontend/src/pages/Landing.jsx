@@ -91,17 +91,16 @@ export function Landing() {
               transition={{ delay: 0.1 }}
               className="mt-4 text-5xl md:text-6xl lg:text-7xl font-light tracking-tight leading-[1.05]"
             >
-              The AI <span className="text-cyan-300 font-semibold">Chief of Staff</span><br/>
-              for founders and operators.
+              Your AI <span className="text-cyan-300 font-semibold">Chief of Staff</span>.<br/>
+              Not another chatbot.
             </motion.h1>
             <motion.p
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="mt-6 text-base md:text-lg text-white/65 max-w-xl leading-relaxed"
+              className="mt-6 text-base md:text-lg text-white/70 max-w-xl leading-relaxed"
             >
-              EvaOne turns information into action. Chat. Vault. File intelligence. A virtual C-suite that
-              debates your decisions. Voice. Memory. Approval-gated execution.
+              EvaOne directs your work. It analyzes your files, remembers your decisions, runs a virtual C-suite over your strategy, drafts every outbound action for your approval, and always tells you the next right step. Built for founders, operators, and Studio Operators — never claims what it hasn't done.
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 16 }}

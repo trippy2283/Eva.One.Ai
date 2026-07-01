@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, useLocation, Navigate } from "react-route
 import { Toaster } from "sonner";
 
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Login } from "@/pages/Login";
 import { AuthCallback } from "@/pages/AuthCallback";
 import { Layout } from "@/components/Layout";
@@ -87,22 +88,24 @@ function AppRouter() {
 function App() {
   return (
     <div className="App eva-grain">
-      <BrowserRouter>
-        <AuthProvider>
-          <AppRouter />
-          <Toaster
-            position="bottom-right"
-            theme="dark"
-            toastOptions={{
-              style: {
-                background: "rgba(8,8,10,0.95)",
-                border: "1px solid rgba(0,240,255,0.2)",
-                color: "#fff",
-              },
-            }}
-          />
-        </AuthProvider>
-      </BrowserRouter>
+      <ErrorBoundary>
+        <BrowserRouter>
+          <AuthProvider>
+            <AppRouter />
+            <Toaster
+              position="bottom-right"
+              theme="dark"
+              toastOptions={{
+                style: {
+                  background: "rgba(8,8,10,0.95)",
+                  border: "1px solid rgba(0,240,255,0.2)",
+                  color: "#fff",
+                },
+              }}
+            />
+          </AuthProvider>
+        </BrowserRouter>
+      </ErrorBoundary>
     </div>
   );
 }
