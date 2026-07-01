@@ -978,9 +978,14 @@ async def delete_project(project_id: str, user: User = Depends(get_current_user)
 @api_router.get("/dashboard/stats")
 async def dashboard_stats(user: User = Depends(get_current_user)):
     sessions = await db.chat_sessions.count_documents({"user_id": user.user_id})
-    messages = await db.chat_messages.count_documents({
-        "session_id": {"$in": [s["id"] async for s in db.chat_sessions.find({"user_id": user.user_id}, {"id": 1})]}
-    }) if sessions else 0
+    # Bounded session-id lookup to avoid unbounded scan under many sessions
+    if sessions:
+        session_ids = [s["id"] async for s in db.chat_sessions.find(
+            {"user_id": user.user_id}, {"id": 1}
+        ).limit(1000)]
+        messages = await db.chat_messages.count_documents({"session_id": {"$in": session_ids}})
+    else:
+        messages = 0
     files = await db.files.count_documents({"user_id": user.user_id, "is_deleted": False})
     notes = await db.vault_notes.count_documents({"user_id": user.user_id})
     projects_total = await db.projects.count_documents({"user_id": user.user_id})
