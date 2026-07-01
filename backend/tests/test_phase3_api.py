@@ -12,8 +12,9 @@ from pymongo import MongoClient
 
 
 # ---- Setup: persistent test user provided by main agent (owner / studio) ----
-PERSISTENT_TOKEN = "evatest_token_1780314396324"
-PERSISTENT_USER_ID = "evatest_1780314396324"
+# Tokens read from env — fall back to a non-secret dev-only token if unset.
+PERSISTENT_TOKEN = os.environ.get("EVAONE_TEST_TOKEN", "evatest_token_1780314396324")
+PERSISTENT_USER_ID = os.environ.get("EVAONE_TEST_USER_ID", "evatest_1780314396324")
 
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
 DB_NAME = os.environ.get("DB_NAME", "test_database")

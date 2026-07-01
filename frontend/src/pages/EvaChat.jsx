@@ -14,6 +14,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import DOMPurify from "dompurify";
 import {
   listSessions,
   createSession,
@@ -454,7 +455,7 @@ function MessageBubble({ m }) {
         {isUser ? (
           <div className="whitespace-pre-wrap">{m.content}</div>
         ) : (
-          <div className="eva-md" dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content) }} />
+          <div className="eva-md" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderMarkdown(m.content), { USE_PROFILES: { html: true } }) }} />
         )}
         {m.model && !isUser && (
           <div className="mt-2 text-[9px] font-mono uppercase tracking-widest text-white/30">via {m.model}</div>

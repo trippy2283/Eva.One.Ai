@@ -1670,10 +1670,13 @@ async def billing_checkout(body: CheckoutBody, http_request: Request, user: User
             "plan_id": body.plan_id,
         },
     )
+    sess = None
     try:
         sess = await sc.create_checkout_session(req)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Stripe error: {e}")
+    if sess is None:
+        raise HTTPException(status_code=502, detail="Stripe returned no session")
 
     await db.payment_transactions.insert_one({
         "id": f"pay_{uuid.uuid4().hex[:12]}",
@@ -1701,10 +1704,13 @@ async def billing_status(session_id: str, http_request: Request, user: User = De
     api_key = os.environ.get("STRIPE_API_KEY")
     host_url = str(http_request.base_url).rstrip("/")
     sc = StripeCheckout(api_key=api_key, webhook_url=f"{host_url}/api/webhook/stripe")
+    status = None
     try:
         status = await sc.get_checkout_status(session_id)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Stripe error: {e}")
+    if status is None:
+        raise HTTPException(status_code=502, detail="Stripe returned no status")
 
     txn = await db.payment_transactions.find_one({"session_id": session_id, "user_id": user.user_id})
     if not txn:

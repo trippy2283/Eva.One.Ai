@@ -3,23 +3,31 @@ import { fetchMe, logout as apiLogout, api } from "@/lib/api";
 
 const AuthContext = createContext(null);
 
+const SESSION_KEY = "evaone_session_token";
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Bootstrap bearer token from localStorage (fallback for blocked cross-site cookies)
+  // Bootstrap bearer token from localStorage (fallback when browser blocks cross-site cookies).
+  // NOTE: httpOnly cookies are still set primarily; localStorage is a secondary fallback.
   useEffect(() => {
     try {
-      const t = localStorage.getItem("evaone_session_token");
+      const t = localStorage.getItem(SESSION_KEY);
       if (t) api.defaults.headers.common["Authorization"] = `Bearer ${t}`;
-    } catch {}
+    } catch (e) {
+      console.debug("localStorage unavailable — falling back to cookie-only auth", e?.message);
+    }
   }, []);
 
   const checkAuth = useCallback(async () => {
     try {
       const me = await fetchMe();
       setUser(me);
-    } catch {
+    } catch (e) {
+      if (e?.response?.status && e.response.status !== 401) {
+        console.warn("Auth check failed:", e.response.status, e.response.data);
+      }
       setUser(null);
     } finally {
       setLoading(false);
@@ -27,7 +35,6 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    // If returning from OAuth callback, AuthCallback page handles auth itself
     if (window.location.hash?.includes("session_id=")) {
       setLoading(false);
       return;
@@ -36,8 +43,16 @@ export function AuthProvider({ children }) {
   }, [checkAuth]);
 
   const logout = async () => {
-    try { await apiLogout(); } catch {}
-    try { localStorage.removeItem("evaone_session_token"); } catch {}
+    try {
+      await apiLogout();
+    } catch (e) {
+      console.warn("Logout API call failed (proceeding with local cleanup):", e?.message);
+    }
+    try {
+      localStorage.removeItem(SESSION_KEY);
+    } catch (e) {
+      console.debug("localStorage removeItem failed:", e?.message);
+    }
     delete api.defaults.headers.common["Authorization"];
     setUser(null);
     window.location.href = "/";
