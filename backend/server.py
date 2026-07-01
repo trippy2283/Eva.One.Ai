@@ -992,11 +992,11 @@ async def dashboard_stats(user: User = Depends(get_current_user)):
     projects_active = await db.projects.count_documents({"user_id": user.user_id, "status": "active"})
     analyzed_files = await db.files.count_documents({"user_id": user.user_id, "status": "analyzed", "is_deleted": False})
 
-    # Aggregate all action items across analyzed files
+    # Aggregate all action items across analyzed files (bounded)
     cur = db.files.find(
         {"user_id": user.user_id, "is_deleted": False, "status": "analyzed"},
         {"_id": 0, "action_items": 1, "filename": 1, "id": 1, "created_at": 1}
-    )
+    ).limit(50)
     open_actions = []
     async for f in cur:
         for ai in (f.get("action_items") or [])[:5]:
