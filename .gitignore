@@ -84,3 +84,7 @@ credentials.json
 *.key
 .credentials
 eva_app_bundle.zip
+.env
+.env.*
+*.env
+frontend/node_modules/.cache/default-development/0.pack
