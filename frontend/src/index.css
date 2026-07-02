@@ -99,6 +99,98 @@ h1, h2, h3, h4 { font-family: 'Outfit', sans-serif; letter-spacing: -0.02em; }
   border-color: rgba(255,255,255,0.16);
 }
 
+/* ==========================================================================
+   EVA ONE — official marketing theme (evaone.online)
+   Purple / blue / magenta neon system layered on the near-black base.
+   ========================================================================== */
+
+/* Gradient wordmark / accent text */
+.eva-wordmark {
+  background: linear-gradient(90deg, #7c5cff 0%, #4d8bff 35%, #22d3ee 70%, #f0f0ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+.eva-text-gradient {
+  background: linear-gradient(90deg, #a78bfa 0%, #60a5fa 50%, #22d3ee 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Primary gradient button (Launch App) */
+.btn-eva {
+  background: linear-gradient(90deg, #7c3aed 0%, #4f46e5 55%, #2563eb 100%);
+  color: #fff;
+  border: 1px solid rgba(168, 139, 250, 0.5);
+  box-shadow: 0 8px 30px rgba(99, 62, 237, 0.35);
+  transition: all 0.25s ease;
+}
+.btn-eva:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 10px 40px rgba(99, 62, 237, 0.55);
+  transform: translateY(-1px);
+}
+
+/* Outline button */
+.btn-eva-outline {
+  background: rgba(255, 255, 255, 0.02);
+  color: #fff;
+  border: 1px solid rgba(168, 139, 250, 0.35);
+  transition: all 0.25s ease;
+}
+.btn-eva-outline:hover {
+  border-color: rgba(168, 139, 250, 0.8);
+  box-shadow: 0 0 24px rgba(124, 92, 255, 0.3);
+}
+
+/* Panels / cards */
+.eva-panel {
+  background: linear-gradient(180deg, rgba(20, 16, 40, 0.55), rgba(10, 10, 18, 0.6));
+  border: 1px solid rgba(124, 92, 255, 0.15);
+  border-radius: 1rem;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+.eva-panel-hover { transition: all 0.3s ease; }
+.eva-panel-hover:hover {
+  border-color: rgba(124, 92, 255, 0.45);
+  box-shadow: 0 0 40px rgba(124, 92, 255, 0.18);
+  transform: translateY(-3px);
+}
+
+/* Neon ring badge (feature icons) */
+.eva-ring {
+  border: 1px solid rgba(124, 92, 255, 0.4);
+  background: radial-gradient(circle at 50% 40%, rgba(124, 92, 255, 0.22), rgba(10, 10, 18, 0.4) 70%);
+  box-shadow: 0 0 26px rgba(124, 92, 255, 0.25), inset 0 0 18px rgba(79, 70, 229, 0.2);
+}
+
+/* Section eyebrow, purple variant */
+.eva-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: rgba(196, 181, 253, 0.75);
+}
+
+/* Ambient glows */
+.eva-glow-purple { box-shadow: 0 0 60px rgba(124, 92, 255, 0.35); }
+.eva-radial-purple {
+  background: radial-gradient(ellipse 60% 50% at 50% 30%, rgba(124, 92, 255, 0.16), transparent 70%);
+}
+
+/* Marketing base backdrop */
+.eva-marketing {
+  background:
+    radial-gradient(ellipse 70% 50% at 80% 0%, rgba(124, 92, 255, 0.12), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 0% 100%, rgba(37, 99, 235, 0.1), transparent 55%),
+    #050509;
+}
+
 /* Eva Avatar pulses */
 @keyframes eva-idle-pulse {
   0%, 100% { transform: scale(1); opacity: 0.92; }
