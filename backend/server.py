@@ -4,6 +4,9 @@ import os
 import uuid
 import logging
 import asyncio
+import hashlib
+import secrets
+import string
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Literal
@@ -354,6 +357,23 @@ async def bump_usage(user_id: str, kind: str) -> None:
 class SessionRequest(BaseModel):
     session_id: str
 
+class MobilePairingStartResponse(BaseModel):
+    pairing_id: str
+    code: str
+    expires_at: str
+
+class MobilePairingRedeemRequest(BaseModel):
+    code: str
+
+def _hash_pairing_code(code: str) -> str:
+    return hashlib.sha256(code.strip().upper().encode("utf-8")).hexdigest()
+
+def _new_pairing_code(length: int = 6) -> str:
+    alphabet = string.ascii_uppercase + string.digits
+    confusing = set("0O1IL")
+    safe_alphabet = "".join(ch for ch in alphabet if ch not in confusing)
+    return "".join(secrets.choice(safe_alphabet) for _ in range(length))
+
 @api_router.post("/auth/session")
 async def create_session(payload: SessionRequest, response: Response):
     """Exchange Emergent session_id for our own session_token, store user, set cookie."""
@@ -448,9 +468,117 @@ async def create_session(payload: SessionRequest, response: Response):
 async def auth_me(user: User = Depends(get_current_user)):
     return user.model_dump()
 
+@api_router.post("/auth/mobile-pairing/start", response_model=MobilePairingStartResponse)
+async def start_mobile_pairing(user: User = Depends(get_current_user)):
+    """Create a short-lived one-time code for pairing a mobile client to this account."""
+    if user.is_guest:
+        raise HTTPException(status_code=403, detail="Mobile pairing requires a signed-in account")
+
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(minutes=10)
+
+    # Retire stale pending codes for this user so the newest code is authoritative.
+    await db.mobile_pairing_codes.update_many(
+        {"user_id": user.user_id, "status": "pending"},
+        {"$set": {"status": "superseded", "updated_at": now.isoformat()}},
+    )
+
+    code = _new_pairing_code()
+    while await db.mobile_pairing_codes.find_one({"code_hash": _hash_pairing_code(code), "status": "pending"}):
+        code = _new_pairing_code()
+
+    pairing_id = f"pair_{uuid.uuid4().hex[:12]}"
+    await db.mobile_pairing_codes.insert_one({
+        "id": pairing_id,
+        "user_id": user.user_id,
+        "code_hash": _hash_pairing_code(code),
+        "status": "pending",
+        "attempts": 0,
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+        "expires_at": expires_at.isoformat(),
+        "redeemed_at": None,
+    })
+    return {"pairing_id": pairing_id, "code": code, "expires_at": expires_at.isoformat()}
+
+@api_router.get("/auth/mobile-pairing/{pairing_id}/status")
+async def mobile_pairing_status(pairing_id: str, user: User = Depends(get_current_user)):
+    doc = await db.mobile_pairing_codes.find_one({"id": pairing_id, "user_id": user.user_id}, {"_id": 0, "code_hash": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Pairing code not found")
+    expires_at = doc["expires_at"]
+    if isinstance(expires_at, str):
+        expires_dt = datetime.fromisoformat(expires_at)
+    else:
+        expires_dt = expires_at
+    if expires_dt.tzinfo is None:
+        expires_dt = expires_dt.replace(tzinfo=timezone.utc)
+    if doc["status"] == "pending" and expires_dt < datetime.now(timezone.utc):
+        await db.mobile_pairing_codes.update_one(
+            {"id": pairing_id},
+            {"$set": {"status": "expired", "updated_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        doc["status"] = "expired"
+    return doc
+
+@api_router.post("/auth/mobile-pairing/redeem")
+async def redeem_mobile_pairing(payload: MobilePairingRedeemRequest, response: Response):
+    """Redeem a mobile pairing code for a normal EvaOne session token."""
+    normalized_code = payload.code.strip().upper().replace("-", "")
+    if len(normalized_code) != 6 or not normalized_code.isalnum():
+        raise HTTPException(status_code=400, detail="Invalid pairing code format")
+
+    now = datetime.now(timezone.utc)
+    doc = await db.mobile_pairing_codes.find_one({"code_hash": _hash_pairing_code(normalized_code), "status": "pending"})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Pairing code not found")
+
+    if doc.get("attempts", 0) >= 5:
+        await db.mobile_pairing_codes.update_one({"id": doc["id"]}, {"$set": {"status": "locked", "updated_at": now.isoformat()}})
+        raise HTTPException(status_code=429, detail="Pairing code locked")
+
+    expires_at = doc["expires_at"]
+    if isinstance(expires_at, str):
+        expires_at = datetime.fromisoformat(expires_at)
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < now:
+        await db.mobile_pairing_codes.update_one({"id": doc["id"]}, {"$set": {"status": "expired", "updated_at": now.isoformat()}})
+        raise HTTPException(status_code=410, detail="Pairing code expired")
+
+    user_doc = await db.users.find_one({"user_id": doc["user_id"]}, {"_id": 0})
+    if not user_doc or user_doc.get("is_guest"):
+        raise HTTPException(status_code=401, detail="Pairing user is no longer valid")
+
+    session_token = f"mobile_{secrets.token_urlsafe(32)}"
+    session_expires_at = now + timedelta(days=7)
+    await db.user_sessions.insert_one({
+        "user_id": user_doc["user_id"],
+        "session_token": session_token,
+        "expires_at": session_expires_at,
+        "created_at": now,
+    })
+    await db.mobile_pairing_codes.update_one(
+        {"id": doc["id"], "status": "pending"},
+        {"$set": {"status": "redeemed", "redeemed_at": now.isoformat(), "updated_at": now.isoformat()}},
+    )
+
+    response.set_cookie(
+        key="session_token",
+        value=session_token,
+        httponly=True,
+        secure=True,
+        samesite="none",
+        path="/",
+        max_age=7 * 24 * 60 * 60,
+    )
+    return {"user": user_doc, "session_token": session_token}
+
 @api_router.post("/auth/logout")
-async def auth_logout(request: Request, response: Response):
+async def auth_logout(request: Request, response: Response, authorization: Optional[str] = Header(None)):
     token = request.cookies.get("session_token")
+    if not token and authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ", 1)[1]
     if token:
         await db.user_sessions.delete_one({"session_token": token})
     response.delete_cookie("session_token", path="/")
@@ -1925,8 +2053,9 @@ async def build_env_context(user: User) -> str:
 # ====================================================================
 
 @api_router.get("/health/diagnostics")
-async def health_diagnostics():
+async def health_diagnostics(user: User = Depends(get_current_user)):
     """Read-only health snapshot of all subsystems + recent errors."""
+    await require_role(user, "admin")
     checks = []
     try:
         await db.command("ping")
@@ -1949,7 +2078,7 @@ async def health_diagnostics():
 
     all_ok = all(c["status"] == "operational" for c in checks) and error_count == 0
     return {
-        "overall": "operational" if all_ok else ("degraded" if error_count > 3 else "operational"),
+        "overall": "operational" if all_ok else "degraded",
         "checks": checks,
         "recent_errors_24h": error_count,
         "recent_warnings_24h": warn_count,
@@ -1960,7 +2089,8 @@ async def health_diagnostics():
     }
 
 @api_router.get("/health/audit")
-async def health_audit(limit: int = 50):
+async def health_audit(limit: int = 50, user: User = Depends(get_current_user)):
+    await require_role(user, "admin")
     cur = db.system_audit.find({}, {"_id": 0}).sort("at", -1).limit(min(limit, 500))
     return await cur.to_list(limit)
 

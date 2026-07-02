@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Plus, Search, Pin, Tag, Trash2, Save, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -16,7 +16,7 @@ export function Vault() {
   const [editor, setEditor] = useState(null); // {id?, title, content, tags, pinned}
   const [loading, setLoading] = useState(true);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await listNotes(q || undefined, activeTag || undefined);
@@ -26,9 +26,9 @@ export function Vault() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [q, activeTag]);
 
-  useEffect(() => { load(); }, [q, activeTag]);
+  useEffect(() => { load(); }, [load]);
 
   const allTags = Array.from(new Set(notes.flatMap((n) => n.tags || [])));
 

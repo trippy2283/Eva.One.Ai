@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Send,
@@ -77,19 +77,21 @@ export function EvaChat() {
   const scrollerRef = useRef(null);
   const textareaRef = useRef(null);
 
+  const loadSessionsAndModels = useCallback(async () => {
+    try {
+      const [s, m] = await Promise.all([listSessions(), listModels()]);
+      setSessions(s);
+      setModels(m);
+      if (!routeSid && s.length > 0) {
+        navigate(`/chat/${s[0].id}`, { replace: true });
+      }
+    } catch (e) { console.error(e); }
+  }, [navigate, routeSid]);
+
   // load sessions + models
   useEffect(() => {
-    (async () => {
-      try {
-        const [s, m] = await Promise.all([listSessions(), listModels()]);
-        setSessions(s);
-        setModels(m);
-        if (!routeSid && s.length > 0) {
-          navigate(`/chat/${s[0].id}`, { replace: true });
-        }
-      } catch (e) { console.error(e); }
-    })();
-  }, []);
+    loadSessionsAndModels();
+  }, [loadSessionsAndModels]);
 
   // load messages for active session
   useEffect(() => {
@@ -104,7 +106,7 @@ export function EvaChat() {
         console.error(e);
       }
     })();
-  }, [routeSid, sessions.length]);
+  }, [routeSid, sessions]);
 
   // auto-scroll
   useEffect(() => {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { listModels, api } from "@/lib/api";
+import { listModels, api, startMobilePairing, getMobilePairingStatus } from "@/lib/api";
 import { Cpu, ShieldCheck, Volume2, KeyRound, Sparkles, Check, X as XIcon, Crown } from "lucide-react";
 import { EvaAvatar } from "@/components/EvaAvatar";
 import { toast } from "sonner";
@@ -10,6 +10,8 @@ export function Settings() {
   const [models, setModels] = useState([]);
   const [ownerStatus, setOwnerStatus] = useState(null);
   const [claiming, setClaiming] = useState(false);
+  const [pairing, setPairing] = useState(null);
+  const [pairingLoading, setPairingLoading] = useState(false);
 
   useEffect(() => {
     listModels().then(setModels).catch(() => {});
@@ -27,6 +29,42 @@ export function Settings() {
       toast.error(e?.response?.data?.detail || "Claim failed");
     } finally {
       setClaiming(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!pairing?.pairing_id || pairing.status !== "pending") return undefined;
+    const timer = window.setInterval(async () => {
+      try {
+        const status = await getMobilePairingStatus(pairing.pairing_id);
+        setPairing((current) => current ? { ...current, ...status } : status);
+      } catch (e) {
+        console.warn("Mobile pairing status check failed", e?.message);
+      }
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [pairing?.pairing_id, pairing?.status]);
+
+  const handleStartPairing = async () => {
+    setPairingLoading(true);
+    try {
+      const nextPairing = await startMobilePairing();
+      setPairing({ ...nextPairing, status: "pending" });
+      toast.success("Mobile pairing code created");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Could not create mobile pairing code");
+    } finally {
+      setPairingLoading(false);
+    }
+  };
+
+  const copyPairingCode = async () => {
+    if (!pairing?.code) return;
+    try {
+      await navigator.clipboard.writeText(pairing.code);
+      toast.success("Pairing code copied");
+    } catch {
+      toast.error("Copy failed");
     }
   };
 
@@ -80,6 +118,47 @@ export function Settings() {
               </div>
               <button onClick={logout} className="btn-ghost px-3 py-1.5 rounded-lg text-xs" data-testid="logout-settings">Sign out</button>
             </div>
+          </Card>
+
+
+          {/* Mobile pairing */}
+          <Card title="Mobile Pairing" eyebrow="SECURE DEVICE ACCESS" icon={KeyRound}>
+            <p className="text-sm text-white/55 mb-4">
+              Generate a one-time code to sign in on a mobile device without sharing your password or OAuth callback URL. Codes expire after 10 minutes.
+            </p>
+            {pairing?.code ? (
+              <div className="rounded-2xl border border-cyan-400/20 bg-cyan-400/5 p-4" data-testid="mobile-pairing-panel">
+                <div className="label-eyebrow text-cyan-300">PAIRING CODE</div>
+                <button
+                  type="button"
+                  onClick={copyPairingCode}
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-4 text-center text-3xl font-mono tracking-[0.35em] text-white hover:border-cyan-400/40"
+                  data-testid="mobile-pairing-code"
+                >
+                  {pairing.code}
+                </button>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-white/50">
+                  <span data-testid="mobile-pairing-status">Status: {pairing.status || "pending"}</span>
+                  <span>Expires {new Date(pairing.expires_at).toLocaleTimeString()}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-4 text-sm text-white/45" data-testid="mobile-pairing-empty">
+                No active pairing code. Create one when your mobile device asks for a code.
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={handleStartPairing}
+              disabled={pairingLoading || user?.is_guest}
+              className="mt-4 btn-cyan rounded-xl px-4 py-2.5 text-sm font-medium disabled:opacity-50"
+              data-testid="start-mobile-pairing-btn"
+            >
+              {pairingLoading ? "Creating…" : "Generate mobile pairing code"}
+            </button>
+            {user?.is_guest && (
+              <div className="mt-2 text-xs text-amber-300">Sign in with Google before pairing a mobile device.</div>
+            )}
           </Card>
 
           {/* Models */}
