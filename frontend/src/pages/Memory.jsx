@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Plus, Trash2, Save, X, Brain } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { listMemories, createMemory, updateMemory, deleteMemory } from "@/lib/api";
@@ -18,12 +18,12 @@ export function Memory() {
   const [activeCat, setActiveCat] = useState(null);
   const [editor, setEditor] = useState(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try { setItems(await listMemories(activeCat || undefined)); }
     catch (e) { console.error(e); }
-  };
+  }, [activeCat]);
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [activeCat]);
+  useEffect(() => { load(); }, [load]);
 
   const openNew = (category = "context") =>
     setEditor({ category, label: "", content: "", importance: 6 });

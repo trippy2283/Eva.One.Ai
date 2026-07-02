@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   CheckCircle2,
   XCircle,
@@ -38,7 +38,7 @@ export function Approvals() {
   const [statusMap, setStatusMap] = useState({});
   const [active, setActive] = useState(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       const [list, st] = await Promise.all([
         listApprovals(filter === "all" ? undefined : filter),
@@ -47,9 +47,9 @@ export function Approvals() {
       setItems(list);
       setStatusMap(st);
     } catch (e) { console.error(e); }
-  };
+  }, [filter]);
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [filter]);
+  useEffect(() => { load(); }, [load]);
 
   const handleApprove = async (id) => {
     try {

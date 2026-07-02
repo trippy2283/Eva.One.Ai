@@ -13,6 +13,12 @@ export const fetchMe = () => api.get("/auth/me").then((r) => r.data);
 export const exchangeSession = (session_id) =>
   api.post("/auth/session", { session_id }).then((r) => r.data);
 export const logout = () => api.post("/auth/logout").then((r) => r.data);
+export const startMobilePairing = () =>
+  api.post("/auth/mobile-pairing/start").then((r) => r.data);
+export const getMobilePairingStatus = (pairingId) =>
+  api.get(`/auth/mobile-pairing/${pairingId}/status`).then((r) => r.data);
+export const redeemMobilePairing = (code) =>
+  api.post("/auth/mobile-pairing/redeem", { code }).then((r) => r.data);
 export const onboard = () => api.post("/onboard").then((r) => r.data);
 
 // Models

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -38,7 +38,7 @@ export function Boardroom() {
   const [topic, setTopic] = useState("");
   const [context, setContext] = useState("");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     const [s, p] = await Promise.all([listBoardroomSessions(), getPersonas()]);
     setSessions(s);
     setPersonas(p);
@@ -47,9 +47,9 @@ export function Boardroom() {
     } else if (s.length === 0) {
       setShowNew(true);
     }
-  };
+  }, [sessionId]);
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [sessionId]);
+  useEffect(() => { load(); }, [load]);
 
   const personaMap = useMemo(() => Object.fromEntries(personas.map((p) => [p.id, p])), [personas]);
 
